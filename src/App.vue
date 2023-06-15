@@ -1,10 +1,12 @@
 <template>
-  <div>
-    hello
-  </div>
+  <MapContainer></MapContainer>
 </template>
 <script setup>
-
+import MapContainer from "./components/MapContainer.vue";
 </script>
-<style scoped>
+<style>
+*{
+    margin: 0;
+    padding: 0;
+}
 </style>
