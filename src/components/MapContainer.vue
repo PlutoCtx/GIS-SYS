@@ -3,9 +3,15 @@
         <h3>高德地图</h3>
         <div>
             <span>城市：</span>
-            <select></select>
+            <select v-model="currentCity_id">
+                <option value="0">选择城市</option>
+                <option v-for="(item, index) in cities" :key="index" :value="item.code">{{item.name}}</option>
+            </select>
             &nbsp;
-            <select></select>
+            <select>
+                <option value="0">选择区县</option>
+                <option v-for="(item, index) in areas" :key="index" :value="item.area_id">{{item.area_name}}</option>
+            </select>
         </div>
     </div>
   <div id="container">
@@ -14,10 +20,17 @@
 
 <script setup>
 import AMapLoader from '@amap/amap-jsapi-loader';
-import { shallowRef, onMounted } from 'vue'
+import { shallowRef, onMounted, ref, watch } from 'vue'
 import {$get} from '../utils/request.js'
 // 定义一个map对象
 const map = shallowRef(null);
+
+// 热门城市
+let cities = ref([])
+// 当前选择的城市编号
+let currentCity_id = ref('0')
+// 定义区县数组
+let areas = ref([])
 // 初始化地图方法
 const initMap = ()=>{
     AMapLoader.load({
@@ -38,8 +51,26 @@ const initMap = ()=>{
 // 获取城市
 const loadCities = async ()=>{
     let ret = await $get('/api/aj/getcitycode')
-    console.log(ret);
+    cities.value = ret.result.hotcity
 }
+
+// 获取城市的区县
+const loadAreas = async (citycode)=>{
+    let {result} = await $get('/api/aj/get_area', {citycode})
+    let arr = Object.keys(result).map(k =>{
+        return {
+            area_id: k,
+            area_name: result[k]
+        }
+    })
+    console.log(arr)
+    areas.value = arr
+}
+
+// 监听城市编号
+watch(currentCity_id, (nval)=>{
+    loadAreas(nval)
+})
 
 // 页面挂载完成
 onMounted(()=>{
