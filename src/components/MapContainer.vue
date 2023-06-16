@@ -40,7 +40,9 @@ const initMap = ()=>{
     AMapLoader.load({
         key:"d09336596eb4b793f08c9805003af069",             // 申请好的Web端开发者Key，首次调用 load 时必填
         version:"2.0",      // 指定要加载的 JSAPI 的版本，缺省时默认为 1.4.15
-        plugins:[''],       // 需要使用的的插件列表，如比例尺'AMap.Scale'等
+        plugins:['AMap.Scale', 'AMap.ToolBar',
+            'AMap.MapType', 'AMap.HawkEye',
+            'AMap.DistrictSearch'],       // 需要使用的的插件列表，如比例尺'AMap.Scale'等
     }).then((AMap)=>{
         currentAMap = AMap
         map.value = new AMap.Map("container",{  //设置地图容器id
@@ -49,6 +51,23 @@ const initMap = ()=>{
             zoom:5,           //初始化地图级别
             center:[105.602725,37.076636], //初始化地图中心点位置
         });
+        // 添加比例尺插件
+        map.value.addControl(new AMap.Scale());
+        // 在图面添加工具条控件，工具条控件集成了缩放、平移、定位等功能按钮在内的组合控件
+        map.value.addControl(new AMap.ToolBar({
+            position: {
+                right: '20px',
+                top: '150px'
+            }
+        }));
+        // // 在图面添加类别切换控件，实现默认图层与卫星图、实施交通图层之间切换的控制
+        // map.value.addControl(new AMap.MapType());
+        // // 在图面添加鹰眼控件，在地图右下角显示地图的缩略图
+        // map.value.addControl(new AMap.HawkEye({isOpen:true}));
+
+
+
+
     }).catch(e=>{
         console.log(e);
     })
@@ -75,42 +94,80 @@ const loadAreas = async (citycode)=>{
 
 // 获取商城信息
 const loadShops = async ()=>{
-    // 获取市 + 区县的信息
-    let address = cities.value.find(c=>c.code==currentCity_id.value).name
-        + areas.value.find(a=>a.area_id==area_id.value).area_name
+    // // 获取市 + 区县的信息
+    // let cityName = cities.value.find(c=>c.code==currentCity_id.value).name
+    // let areaName = areas.value.find(a=>a.area_id==area_id.value).area_name
+    // let address = cityName + areaName
+    //
+    // // 获取该地址的坐标
+    // let {geocodes} = await $get('https://restapi.amap.com/v3/geocode/geo', {
+    //     key: 'a6883936d454c262eaf33d9e0064c98b',
+    //     address
+    // })
+    //
+    // // 将坐标转换为数组格式
+    // let position = geocodes[0].location.split(',')
 
-    // 获取该地址的坐标
-    let {geocodes} = await $get('https://restapi.amap.com/v3/geocode/geo', {
-        key: 'a6883936d454c262eaf33d9e0064c98b',
-        address
+    let areaName = areas.value.find(a=>a.area_id==area_id.value).area_name
+
+    // 绘制区县边界
+    var district = new currentAMap.DistrictSearch({ // 创建行政区查询对象
+        subdistrict: 0,     // 获取边界不需要返回下级行政区域
+        extensions: 'all', // 返回行政区边界坐标等具体信息
+        level: 'district' // 设置查询行政区级别为 区
+    });
+    district.search(areaName, function(status, result) {
+        var bounds = result.districtList[0].boundaries; // 获取朝阳区的边界信息
+        var polygons = [];
+        if (bounds) {
+            for (var i = 0, l = bounds.length; i < l; i++) {
+                var polygon = new currentAMap.Polygon({ //生成行政区划polygon
+                    map: map.value,
+                    strokeWeight: 1,
+                    path: bounds[i],
+                    fillOpacity: 0.7,
+                    fillColor: '#CCF3FF',
+                    strokeColor: '#CC66CC'
+                })
+                polygons.push(polygon);
+            }
+            map.value.setFitView();// 地图自适应
+        }
     })
-
-    // 将坐标转换为数组格式
-    let position = geocodes[0].location.split(',')
     // 设置地图中心点和缩放级别
-    map.value.setZoomAndCenter(12, position);
+    map.value.setZoom(15);
+
+
     // 获取商城的信息
     let {shop_data} = await $get('/api/at/shop', {
         currentCity_id: currentCity_id.value,
         area_id: area_id.value
     })
-    // 清楚地图上的所有覆盖物
-    map.value.clearMap();
     // 循环遍历所有的商城
     shop_data.forEach(s=>{
+        let content = `
+            <div style="display: flex;align-items: center;">
+                <div style="margin-right: 5px"><img style="width: 60px" src="${s.shop_ico}"/></div>
+                <div style="font-size: 12px;color: #666">
+                    <div>名称：${s.shop_name}</div>
+                    <div>地址：${s.addr}</div>
+                    <div>联系：${s.mobile}</div>
+                    <div>简介：${s.shop_desc}</div>
+                </div>
+            </div>
+        `
         // 创建marker
         const marker = new currentAMap.Marker({
             // 位置
             position: [s.map_longitude, s.map_latitude],
             // 标题
-            title: s.shop_name
+            title: s.shop_name,
         });
-        console.log(s.map_longitude, s.map_latitude, s.shop_name)
         // 将marker添加到地图
         map.value.add(marker)
         // 给每个marker注册点击事件
         map.on('click', function (e){
-            console.log(e.target.getPosition());
+            console.log(e.target.txt);
             // 创建并打开一个信息框
             var infoWindow = new currentAMap.InfoWindow({
                 // 信息框内容
@@ -136,6 +193,8 @@ watch(area_id, (nval)=>{
         // 加载商城信息
         loadShops()
     }
+    // 清楚地图上的所有覆盖物
+    map.value.clearMap();
 })
 
 // 页面挂载完成
@@ -158,6 +217,6 @@ onMounted(()=>{
     padding:0px;
     margin: 5px 5px 0 5px;
     box-sizing: border-box;
-    height: 700px;
+    height: 670px;
 }
 </style>
