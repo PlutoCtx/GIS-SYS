@@ -8,7 +8,7 @@
                 <option v-for="(item, index) in cities" :key="index" :value="item.code">{{item.name}}</option>
             </select>
             &nbsp;
-            <select>
+            <select v-model="area_id">
                 <option value="0">选择区县</option>
                 <option v-for="(item, index) in areas" :key="index" :value="item.area_id">{{item.area_name}}</option>
             </select>
@@ -31,6 +31,8 @@ let cities = ref([])
 let currentCity_id = ref('0')
 // 定义区县数组
 let areas = ref([])
+// 当前选择的区县编号
+let area_id = ref('0')
 // 初始化地图方法
 const initMap = ()=>{
     AMapLoader.load({
@@ -67,9 +69,28 @@ const loadAreas = async (citycode)=>{
     areas.value = arr
 }
 
+// 获取商城信息
+const loadShops = async ()=>{
+    let ret = await $get('/api/at/shop', {
+        currentCity_id: currentCity_id.value,
+        area_id: area_id.value
+    })
+    console.log(ret)
+}
+
 // 监听城市编号
 watch(currentCity_id, (nval)=>{
+    // 加载区县信息
     loadAreas(nval)
+    area_id.value = '0'
+})
+
+// 监听区县编号
+watch(area_id, (nval)=>{
+    if (nval !== '0'){
+        // 加载商城信息
+        loadShops()
+    }
 })
 
 // 页面挂载完成
