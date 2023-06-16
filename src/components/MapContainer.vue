@@ -94,6 +94,8 @@ const loadShops = async ()=>{
         currentCity_id: currentCity_id.value,
         area_id: area_id.value
     })
+    // 清楚地图上的所有覆盖物
+    map.value.clearMap();
     // 循环遍历所有的商城
     shop_data.forEach(s=>{
         // 创建marker
@@ -106,6 +108,18 @@ const loadShops = async ()=>{
         console.log(s.map_longitude, s.map_latitude, s.shop_name)
         // 将marker添加到地图
         map.value.add(marker)
+        // 给每个marker注册点击事件
+        map.on('click', function (e){
+            console.log(e.target.getPosition());
+            // 创建并打开一个信息框
+            var infoWindow = new currentAMap.InfoWindow({
+                // 信息框内容
+                content: "Hello World!",  //传入 dom 对象，或者 html 字符串
+                // 位置偏移量
+                offset: new AMap.Pixel(0, -30)
+            });
+            infoWindow.open(map.value, e.target.getPosition());
+        })
     })
 }
 
