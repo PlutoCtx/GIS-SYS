@@ -71,6 +71,18 @@ const loadAreas = async (citycode)=>{
 
 // 获取商城信息
 const loadShops = async ()=>{
+    // 获取市 + 区县的信息
+    let address = cities.value.find(c=>c.code==currentCity_id.value).name
+        + areas.value.find(a=>a.area_id==area_id.value).area_name
+
+    // 获取该地址的坐标
+    $get('https://restapi.amap.com/v3/geocode/geo', {
+        key: 'a6883936d454c262eaf33d9e0064c98b',
+        address
+    }).then(ret=>{
+        console.log(ret);
+    })
+
     let ret = await $get('/api/at/shop', {
         currentCity_id: currentCity_id.value,
         area_id: area_id.value
