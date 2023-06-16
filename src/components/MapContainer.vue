@@ -22,9 +22,11 @@
 import AMapLoader from '@amap/amap-jsapi-loader';
 import { shallowRef, onMounted, ref, watch } from 'vue'
 import {$get} from '../utils/request.js'
+
+// 备份AMap对象
+let currentAMap = null
 // 定义一个map对象
 const map = shallowRef(null);
-
 // 热门城市
 let cities = ref([])
 // 当前选择的城市编号
@@ -40,8 +42,10 @@ const initMap = ()=>{
         version:"2.0",      // 指定要加载的 JSAPI 的版本，缺省时默认为 1.4.15
         plugins:[''],       // 需要使用的的插件列表，如比例尺'AMap.Scale'等
     }).then((AMap)=>{
+        currentAMap = AMap
         map.value = new AMap.Map("container",{  //设置地图容器id
             viewMode:"3D",    //是否为3D地图模式
+            pitch: 45,
             zoom:5,           //初始化地图级别
             center:[105.602725,37.076636], //初始化地图中心点位置
         });
@@ -65,7 +69,7 @@ const loadAreas = async (citycode)=>{
             area_name: result[k]
         }
     })
-    console.log(arr)
+    // console.log(arr)
     areas.value = arr
 }
 
@@ -76,18 +80,33 @@ const loadShops = async ()=>{
         + areas.value.find(a=>a.area_id==area_id.value).area_name
 
     // 获取该地址的坐标
-    $get('https://restapi.amap.com/v3/geocode/geo', {
+    let {geocodes} = await $get('https://restapi.amap.com/v3/geocode/geo', {
         key: 'a6883936d454c262eaf33d9e0064c98b',
         address
-    }).then(ret=>{
-        console.log(ret);
     })
 
-    let ret = await $get('/api/at/shop', {
+    // 将坐标转换为数组格式
+    let position = geocodes[0].location.split(',')
+    // 设置地图中心点和缩放级别
+    map.value.setZoomAndCenter(12, position);
+    // 获取商城的信息
+    let {shop_data} = await $get('/api/at/shop', {
         currentCity_id: currentCity_id.value,
         area_id: area_id.value
     })
-    console.log(ret)
+    // 循环遍历所有的商城
+    shop_data.forEach(s=>{
+        // 创建marker
+        const marker = new currentAMap.Marker({
+            // 位置
+            position: [s.map_longitude, s.map_latitude],
+            // 标题
+            title: s.shop_name
+        });
+        console.log(s.map_longitude, s.map_latitude, s.shop_name)
+        // 将marker添加到地图
+        map.value.add(marker)
+    })
 }
 
 // 监听城市编号
